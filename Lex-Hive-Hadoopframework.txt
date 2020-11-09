@@ -1,0 +1,86 @@
+Dataset: Worldcensus.txt
+Create a Hive database  “CensusDB”:
+hive> create database If not exists CensuDbLex
+    > comment 'Lex bigdata 201'
+    > with dbproperties('Created by' = 'Inceptez','Created on' = '2019-01-01');
+
+Create a Hive table "Census_table":
+hive (CensuDBLex)> create table Census(ID int,Employmenttype string,Education string,mstatus string,jobtype string,
+                 > row format delimited fields terminated by '\t'
+                 > stored as textfile;
+
+
+hive (CensuDBLex)> LOAD DATA LOCAL INPATH '/home/hduser/hiveusecase/Hive_datasets/WorldOneCensus.txt' OVERWRITE INTO TABLE Census;
+
+
+Create two views out of the table as USCensus_View and OthersCensus_View filtering with country names
+
+hive (CensuDBLex)> create view USCensus_view as
+                 > select * from census where city = 'US';
+hive (CensuDBLex)> create view OthersCensus_view as
+                 > select * from census where city != 'US';
+
+
+
+write a HiveQL query to compute the Average Working hrs based on marital status using Hive
+hive (censudblex)> select mstatus,avg(salary) from census Group by mstatus;
+
+Write a HiveQL query to compute the total count of people under each marital status
+hive (censudblex)> select mstatus,count(*) from census Group by mstatus;
+
+Write a HiveQL query to compute the total count of people per job type
+hive (censudblex)> select jobtype,count(*) from census Group by jobtype;
+
+1. Create a Static partition table named census_ETP_sp with partition on column employmentType value Private
+
+ALTER TABLE table_name SET SERDEPROPERTIES ('field.delim' = '\t');
+
+hive (censudblex)> create table census_ETP_sp (ID int,Education string,mstatus string,jobtype string,
+                 > hoursperweek int,city string,salary string)
+                 > partitioned by(Employmenttype string)
+                 > row format delimited fields terminated by '\t'
+                 > stored as textfile;
+
+hive (censudblex)> Insert into table census_ETP_sp partition(Employmenttype='Private')
+                 > select id,education,mstatus,jobtype,hoursperweek,city,salary from census_table where employmenttype='Private';
+
+2. Create a Dynamic partition table named census _MS_dp with partition on column marital-status
+
+
+hive (censudblex)> create table census_MS_dp (ID int,employmenttype string,Education string,jobtype string,
+                 > hoursperweek int,city string,salary string)
+                 > partitioned by(mstatus string)
+                 > row format delimited fields terminated by '\t'
+                 > stored as textfile;
+
+hive (censudblex)> Insert into table census_MS_dp partition(mstatus)
+                 > select id,employmenttype,education,jobtype,hoursperweek,city,salary,mstatus from census_table;
+
+
+3. Create a bucketed table named census_ET_bucket using the column employmentType. Compute the average working hours per week of every bucket
+
+hive (censudblex)> create table census_ET_bucket(ID int,employmenttype string,Education string,mstatus string,jobtype string,
+                 > hoursperweek int,city string,salary string)
+                 > clustered by(employmenttype) INTO 3 buckets
+                 > row format delimited fields terminated by '\t'
+                 > stored as textfile;
+
+Insert overwrite table census_ET_bucket
+select Id, employmenttype,Education,mstatus,jobtype,hoursperweek,city,salary from census_table;
+
+4. Create two Hive tables to store WorldOneCensusData.tsv file into Sequence file format and RC file format
+
+hive (CensuDBLex)> create table Census_seq_file(ID int,Employmenttype string,Education string,mstatus string,jobtype string,hoursperweek int,city string,salary string)
+                 > row format delimited fields terminated by '\t'
+                 >stored as sequencefile;
+
+
+LOAD DATA LOCAL INPATH '/home/hduser/hiveusecase/Hive_datasets/WorldOneCensus.txt' OVERWRITE INTO TABLE Census_seq_file;
+
+hive (CensuDBLex)> create table Census_orc_file(ID int,Employmenttype string,Education string,mstatus string,jobtype string,hoursperweek int,city string,salary string)
+                 > row format delimited fields terminated by '\t'
+                 >stored as orc;
+
+
+LOAD DATA LOCAL INPATH '/home/hduser/hiveusecase/Hive_datasets/WorldOneCensus.txt' OVERWRITE INTO TABLE Census_orc_file;
+
